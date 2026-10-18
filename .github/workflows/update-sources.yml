@@ -1,23 +1,34 @@
 name: update-sources
 
-# 每天自动重建 LibreTV 源列表。
+# 每天自动重建 LibreTV 订阅内容：点播源 + 直播源。
 # 产物去向（双通道）：
 #   ① 提交回本私有仓库（代码与数据备份、可追溯）
 #   ② 同步推送到 Gitee 的【公开产物仓库】—— 供 LibreTV 订阅
-#      （私有仓库 raw 读不到，所以订阅源必须是公开可读的；Gitee 国内还更快）
+#      （私有仓库 raw 读不到，所以订阅源必须公开可读；Gitee 国内还更快）
 on:
   schedule:
     - cron: "0 18 * * *"     # 每天 UTC 18:00（北京 02:00）自动跑
   workflow_dispatch:          # 也可以手动点按钮立即跑
+  push:
+    branches: [main]
+    paths-ignore:             # 产物变化不触发，避免「提交产物→再触发」死循环
+      - "sources.json"
+      - "live.m3u"
+      - "README.md"
+      - "DEPLOY.md"
 
 permissions:
-  contents: write             # 需要写权限才能把 sources.json 提交回本仓库
+  contents: write             # 需要写权限才能把产物提交回本仓库
 
 env:
   # ── 只需改下面两行 ────────────────────────────────────────
   GITEE_USER: "hthyeah"                  # 改成你的 Gitee 用户名
   GITEE_REPO: "libretv-sources"          # 改成你的 Gitee 公开仓库名
   # ─────────────────────────────────────────────────────────
+  # 直播源镜像地址：构建时写进订阅的 liveSources，NAS 从 Gitee 拉（国内快）
+  LIVE_MIRROR_URL: "https://gitee.com/hthyeah/libretv-sources/raw/main/live.m3u"
+  # 节目单（EPG）：51zmt，实测 100 频道 / 3800+ 条节目
+  LIVE_EPG: "http://epg.51zmt.top:8000/e.xml"
   # 然后在 Settings → Secrets and variables → Actions 里添加
   # 唯一的秘密：GITEE_TOKEN = Gitee 私人令牌（勾 projects 权限）
 
@@ -31,16 +42,16 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: 实测并生成源列表
+      - name: 实测点播源 + 构建直播源
         run: python build_sources.py
 
       - name: 提交回私有仓库
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add sources.json
+          git add sources.json live.m3u
           if git diff --cached --quiet; then
-            echo "源列表无变化，跳过提交"
+            echo "产物无变化，跳过提交"
           else
             git commit -m "chore: 自动更新源列表 $(date -u '+%Y-%m-%d %H:%M UTC')"
             git push
@@ -48,7 +59,7 @@ jobs:
 
       # ── 第二通道：同步到 Gitee 公开产物仓库 ────────────────────────
       # 未配置 GITEE_TOKEN 时本步骤自动跳过，不影响主流程
-      - name: 同步到 Gitee（后备订阅源）
+      - name: 同步到 Gitee（订阅源出口）
         continue-on-error: true
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
@@ -59,11 +70,11 @@ jobs:
           fi
           git clone --depth 1 \
             "https://${GITEE_USER}:${GITEE_TOKEN}@gitee.com/${GITEE_USER}/${GITEE_REPO}.git" mirror
-          cp sources.json mirror/
+          cp sources.json live.m3u mirror/
           cd mirror
           git config user.name  "github-actions[bot]"
           git config user.email "actions@users.noreply.gitee.com"
-          git add sources.json
+          git add sources.json live.m3u
           if git diff --cached --quiet; then
             echo "Gitee 侧无变化"
           else
@@ -75,22 +86,35 @@ jobs:
       - name: 写入任务摘要
         run: |
           {
-            echo "## 源列表更新完成"
+            echo "## 订阅内容更新完成"
             echo ""
             echo "触发方式：${{ github.event_name }}"
             echo ""
             python3 - <<'PY'
-          import json
+          import json, os
           d = json.load(open("sources.json"))
           s = d["sources"]
+          lv = d.get("liveSources") or []
           n_adult = sum(1 for x in s if x["isAdult"])
           print(f"- 列表名：{d['name']}")
-          print(f"- 可用源总数：**{len(s)}**（isAdult 标记 {n_adult} 个）")
-          print("")
+          print(f"- 点播源：**{len(s)}** 个（isAdult 标记 {n_adult} 个）")
+          print(f"- 直播源：**{len(lv)}** 个")
+          if os.path.exists("live.m3u"):
+              n_ch = sum(1 for line in open("live.m3u", encoding="utf-8")
+                         if line.startswith("#EXTINF"))
+              print(f"- 直播频道：**{n_ch}** 个（合并去重后）")
+          print()
           print("| 源名 | 地址 |")
           print("|:--|:--|")
           for x in s[:50]:
               tag = " `18+`" if x["isAdult"] else ""
               print(f"| {x['name']}{tag} | `{x['url']}` |")
+          if lv:
+              print()
+              print("### 直播源")
+              print("| 名称 | 地址 | EPG |")
+              print("|:--|:--|:--|")
+              for x in lv:
+                  print(f"| {x['name']} | `{x['url']}` | {x.get('epg','-')} |")
           PY
           } >> $GITHUB_STEP_SUMMARY

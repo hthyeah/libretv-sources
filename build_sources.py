@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-LibreTV 源列表自动构建器
-=========================
-在 GitHub Actions 上定时运行：拉取社区源目录 → 逐个实测「搜索能力」→
-生成 LibreTV-SourceList JSON（sources.json），供 LibreTV 通过
-DEFAULT_SUBSCRIPTIONS 订阅（24h 自动刷新）。
+LibreTV 源列表自动构建器（点播源 + 直播源）
+=============================================
+在 GitHub Actions 上定时运行：
+  ① 拉取社区源目录 → 逐个实测「搜索能力」→ 生成点播源列表
+  ② 拉取 iptv-org 直播源 → 合并去重 → 生成 live.m3u 镜像
+  ③ 合成一份 LibreTV-SourceList JSON，点播源与直播源一起下发
 
-关键点：只保留「真的能搜到结果」的源，而不是「接口活着」的源。
+LibreTV 通过 DEFAULT_SUBSCRIPTIONS 订阅（24h 自动刷新），因此
+NAS 端无需任何改动 —— 换源、加直播源全在云端完成。
+
+关键点：点播源只保留「真的能搜到结果」的，而不是「接口活着」的。
 —— 采集站会关掉 ac=videolist 搜索接口防滥用，只看存活会误判
    （实测：面板标"100% 在线"的 19 个源里只有 10 个真能搜）。
 
@@ -15,6 +19,11 @@ DEFAULT_SUBSCRIPTIONS 订阅（24h 自动刷新）。
   默认【保留】，只按要求打上 isAdult 标记 —— LibreTV 端开启成人过滤时会
   自动跳过带标记的源，关掉过滤就能用，两边都灵活。
   若要把产物放进公开仓库，设环境变量 FILTER_ADULT=1 改为直接剔除。
+
+直播源说明：
+  原始 iptv-org 源在国内可达（GitHub Pages，实测 0.4~0.7s），但频道有重复、
+  分组混乱。这里合并去重后输出成 live.m3u，由 CI 一并推到 Gitee，
+  NAS 从 Gitee 拉（国内更快更稳）。epg 用 51zmt（实测 100 频道节目单）。
 """
 import json
 import os
@@ -41,12 +50,12 @@ OUT = os.environ.get("OUT_FILE", "sources.json")
 # "1" = 直接剔除成人源；默认 "0" = 保留并打 isAdult 标记
 FILTER_ADULT = os.environ.get("FILTER_ADULT", "0") == "1"
 
-# 社区源目录（每 6 小时监测一次，暴露 JSON）
+# ─────────────────── 点播源（Apple CMS 采集站）───────────────────
+
 CATALOGS = [
     "https://mylazily.github.io/ziyuanzhan/data/online.json",
 ]
 
-# 兜底候选（社区目录拉不到时使用）
 FALLBACK = [
     ("暴风", "https://bfzyapi.com/api.php/provide/vod/"),
     ("非凡", "https://ffzy5.tv/api.php/provide/vod/"),
@@ -60,7 +69,6 @@ FALLBACK = [
     ("光速", "https://api.guangsuapi.com/api.php/provide/vod/"),
 ]
 
-# 成人源识别词 —— 同时匹配「源名称」和「API 域名」，用于打 isAdult 标记
 ADULT_WORDS = [
     "🔞", "成人", "福利", "麻豆", "豆豆", "辣椒", "黑料", "桃花", "黄色仓库",
     "souav", "xxav", "xingba", "杏吧", "湿乐园", "番号", "fhapi", "av资源",
@@ -69,15 +77,51 @@ ADULT_WORDS = [
     "meimei", "91porn", "supjav", "美少女", "白嫖", "水机", "香X儿",
 ]
 
-# 名称清理：去掉常见后缀，让界面清爽
 NAME_SUFFIX = re.compile(r"(资源站|采集站|资源|影视站|影视)$")
 
+# ─────────────────── 直播源（IPTV / M3U）───────────────────
 
-def fetch(url, timeout=TIMEOUT):
+# (显示名, M3U 地址) —— 全部实测国内可达（GitHub Pages）
+LIVE_SOURCES = [
+    ("iptv-org 中文频道", "https://iptv-org.github.io/iptv/languages/zho.m3u"),
+    ("iptv-org 中国大陆", "https://iptv-org.github.io/iptv/countries/cn.m3u"),
+    ("iptv-org 香港", "https://iptv-org.github.io/iptv/countries/hk.m3u"),
+    ("iptv-org 台湾", "https://iptv-org.github.io/iptv/countries/tw.m3u"),
+]
+
+LIVE_EPG = os.environ.get("LIVE_EPG", "http://epg.51zmt.top:8000/e.xml")
+LIVE_OUT = os.environ.get("LIVE_OUT_FILE", "live.m3u")
+SKIP_LIVE = os.environ.get("SKIP_LIVE", "0") == "1"
+
+# 镜像后的地址（CI 里设成 Gitee 上的 raw 地址；本地跑可不设）
+LIVE_MIRROR_URL = os.environ.get("LIVE_MIRROR_URL", "").strip()
+
+# M3U 里明显播不了的标记，直接剔除
+LIVE_DROP_MARKS = ["[Geo-blocked]", "[Not 24/7]", "[Offline]", "[Dead]"]
+
+# 分组名中文化（iptv-org 原始分组是英文）
+GROUP_ZH = {
+    "General": "综合", "News": "新闻", "Movies": "电影", "Sports": "体育",
+    "Kids": "少儿", "Entertainment": "娱乐", "Lifestyle": "生活",
+    "Education": "教育", "Culture": "文化", "Business": "财经",
+    "Religious": "宗教", "Music": "音乐", "Documentary": "纪录",
+    "Shop": "购物", "Undefined": "其他", "Family": "家庭",
+    "Travel": "旅游", "Food": "美食", "Auto": "汽车", "Science": "科学",
+    "Weather": "天气", "Comedy": "喜剧", "Series": "剧集",
+    "Animation": "动画", "Outdoor": "户外", "Relax": "休闲",
+    "Legislative": "政务", "Classic": "经典", "Local": "地方",
+}
+
+# 频道名里的画质/状态后缀，显示时去掉
+NAME_NOISE = re.compile(
+    r"\s*[\(\[]\s*(?:\d{3,4}[piPI]|HD|SD|FHD|UHD|4K|8K|Not 24/7|Geo-blocked)\s*[\)\]]")
+
+
+def fetch(url, timeout=TIMEOUT, limit=600_000):
     req = urllib.request.Request(url, headers={
         "User-Agent": UA, "Accept": "application/json, text/plain, */*"})
     with urllib.request.urlopen(req, timeout=timeout, context=CTX) as r:
-        return r.read(600_000).decode("utf-8", "ignore")
+        return r.read(limit).decode("utf-8", "ignore")
 
 
 def looks_adult(*parts):
@@ -102,7 +146,7 @@ def load_candidates():
         if not api or api in seen or not is_cms_api(api):
             return
         adult = looks_adult(name, desc, api)
-        if FILTER_ADULT and adult:          # 仅在显式开启过滤时剔除
+        if FILTER_ADULT and adult:
             return
         seen.add(api)
         cand.append((clean_name(name), api, adult))
@@ -151,7 +195,67 @@ def probe(item):
         return name, api, adult, "dead", 0, type(e).__name__
 
 
+# ─────────────────── 直播源构建 ───────────────────
+
+def parse_m3u(txt):
+    """解析 M3U → [(name, url, attrs)]"""
+    out = []
+    for blk in re.split(r"\n(?=#EXTINF)", txt):
+        m = re.match(r"#EXTINF:\s*([^,]*),(.*)", blk.strip())
+        u = re.search(r"^(https?://\S+)", blk, re.M)
+        if m and u:
+            attrs = dict(re.findall(r'([\w-]+)="([^"]*)"', m.group(1)))
+            out.append((m.group(2).strip(), u.group(1).strip(), attrs))
+    return out
+
+
+def build_live():
+    """拉取并合并直播源，输出去重后的 live.m3u；返回频道数"""
+    seen, chans = set(), []
+    for label, url in LIVE_SOURCES:
+        try:
+            txt = fetch(url, limit=2_000_000)
+            parsed = parse_m3u(txt)
+            added = dropped = 0
+            for name, u, attrs in parsed:
+                if any(mk in name for mk in LIVE_DROP_MARKS):
+                    dropped += 1
+                    continue
+                if u in seen:
+                    continue
+                seen.add(u)
+                chans.append((name, u, attrs, label))
+                added += 1
+            print(f"[直播] {label}: 解析 {len(parsed)}，新增 {added}，剔除标记 {dropped}",
+                  file=sys.stderr)
+        except Exception as e:
+            print(f"[直播] {label} 拉取失败: {type(e).__name__}", file=sys.stderr)
+
+    if not chans:
+        return 0
+
+    lines = ["#EXTM3U"]
+    for name, u, attrs, label in chans:
+        raw_grp = (attrs.get("group-title") or "").split(";")[0].strip()
+        grp = GROUP_ZH.get(raw_grp, raw_grp) or label
+        logo = attrs.get("tvg-logo", "")
+        tvgid = attrs.get("tvg-id", "")
+        nm = NAME_NOISE.sub("", name).strip() or name
+        nm = nm.replace('"', "'")
+        lines.append(
+            f'#EXTINF:-1 tvg-id="{tvgid}" tvg-logo="{logo}" '
+            f'group-title="{grp}",{nm}')
+        lines.append(u)
+
+    with open(LIVE_OUT, "w", encoding="utf-8") as fp:
+        fp.write("\n".join(lines) + "\n")
+
+    print(f"[直播] 合并去重后 {len(chans)} 个频道 -> {LIVE_OUT}", file=sys.stderr)
+    return len(chans)
+
+
 def main():
+    # ① 点播源
     cand = load_candidates()
     mode = "开（直接剔除）" if FILTER_ADULT else "关（保留并打标记）"
     print(f"候选源: {len(cand)} 个 | 成人源过滤: {mode} | "
@@ -169,19 +273,38 @@ def main():
             if status == "ok":
                 alive.append({"name": name, "url": api, "isAdult": bool(adult)})
 
-    alive.sort(key=lambda s: (s["isAdult"], s["name"]))   # 正常源排前面
+    alive.sort(key=lambda s: (s["isAdult"], s["name"]))
 
+    # ② 直播源
+    n_live = 0
+    if not SKIP_LIVE:
+        n_live = build_live()
+
+    live_list = []
+    if n_live:
+        if LIVE_MIRROR_URL:
+            live_list = [{
+                "name": "IPTV 直播（自动镜像·点开即看）",
+                "url": LIVE_MIRROR_URL,
+                "epg": LIVE_EPG,
+            }]
+        else:
+            for label, url in LIVE_SOURCES:
+                live_list.append({"name": label, "url": url, "epg": LIVE_EPG})
+
+    # ③ 合成订阅
     out = {
         "name": f"LibreTV 自动源列表（{time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime())} 实测）",
-        "version": 2,
-        "sources": alive[:150],
-        "liveSources": [],
+        "version": 3,
+        "sources": alive[:100],
+        "liveSources": live_list[:50],
     }
     with open(OUT, "w", encoding="utf-8") as fp:
         json.dump(out, fp, ensure_ascii=False, indent=2)
 
     n_adult = sum(1 for s in alive if s["isAdult"])
-    print(f"\n可用源 {len(alive)}/{len(cand)}（其中 isAdult 标记 {n_adult} 个）"
+    print(f"\n点播源 {len(alive)}/{len(cand)}（isAdult {n_adult} 个）"
+          f" | 直播源 {len(live_list)} 个（{n_live} 频道）"
           f"  ->  已写入 {OUT}", file=sys.stderr)
     return 0 if alive else 1
 
