@@ -1,0 +1,77 @@
+{
+  "name": "LibreTV 自动源列表（2026-10-18 12:39 UTC 实测）",
+  "version": 2,
+  "sources": [
+    {
+      "name": "360",
+      "url": "https://360zy.com/api.php/provide/vod/",
+      "isAdult": false
+    },
+    {
+      "name": "光速",
+      "url": "https://api.guangsuapi.com/api.php/provide/vod/",
+      "isAdult": false
+    },
+    {
+      "name": "暴风",
+      "url": "https://bfzyapi.com/api.php/provide/vod/",
+      "isAdult": false
+    },
+    {
+      "name": "极速",
+      "url": "https://jszyapi.com/api.php/provide/vod/",
+      "isAdult": false
+    },
+    {
+      "name": "爱奇艺",
+      "url": "https://iqiyizyapi.com/api.php/provide/vod",
+      "isAdult": false
+    },
+    {
+      "name": "猫眼",
+      "url": "https://api.maoyanapi.top/api.php/provide/vod",
+      "isAdult": false
+    },
+    {
+      "name": "百度云",
+      "url": "https://api.apibdzy.com/api.php/provide/vod",
+      "isAdult": false
+    },
+    {
+      "name": "虎牙",
+      "url": "https://huyazy.net/api.php/provide/vod/",
+      "isAdult": false
+    },
+    {
+      "name": "豪华",
+      "url": "https://haohuazy.com/api.php/provide/vod/",
+      "isAdult": false
+    },
+    {
+      "name": "速播",
+      "url": "https://subocj.com/api.php/provide/vod/",
+      "isAdult": false
+    },
+    {
+      "name": "金鹰",
+      "url": "https://jyzyapi.com/provide/vod/",
+      "isAdult": false
+    },
+    {
+      "name": "非凡",
+      "url": "https://ffzy5.tv/api.php/provide/vod/",
+      "isAdult": false
+    },
+    {
+      "name": "魔都",
+      "url": "https://www.mdzyapi.com/api.php/provide/vod/",
+      "isAdult": false
+    },
+    {
+      "name": "飘零影院",
+      "url": "https://p2100.net/api.php/provide/vod/",
+      "isAdult": true
+    }
+  ],
+  "liveSources": []
+}
