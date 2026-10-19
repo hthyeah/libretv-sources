@@ -81,13 +81,21 @@ NAME_SUFFIX = re.compile(r"(资源站|采集站|资源|影视站|影视)$")
 
 # ─────────────────── 直播源（IPTV / M3U）───────────────────
 
-# (显示名, M3U 地址) —— 全部实测国内可达（GitHub Pages）
+# (显示名, M3U 地址) —— 国内源优先（频道质量高、国内可播率高）
+# 注意：这些都在 raw.githubusercontent.com 上，国内直连拉不动，
+# 所以由 Actions（海外）拉取后镜像到 Gitee 再分发给 NAS。
 LIVE_SOURCES = [
-    ("iptv-org 中文频道", "https://iptv-org.github.io/iptv/languages/zho.m3u"),
-    ("iptv-org 中国大陆", "https://iptv-org.github.io/iptv/countries/cn.m3u"),
-    ("iptv-org 香港", "https://iptv-org.github.io/iptv/countries/hk.m3u"),
-    ("iptv-org 台湾", "https://iptv-org.github.io/iptv/countries/tw.m3u"),
+    ("Guovin 自动测速", "https://raw.githubusercontent.com/Guovin/iptv-api/gd/output/result.m3u"),
+    ("best-fan 全部", "https://raw.githubusercontent.com/best-fan/iptv-sources/main/cn_all.m3u8"),
+    ("suxuang 典藏版", "https://raw.githubusercontent.com/suxuang/myIPTV/main/ipv4.m3u"),
+    ("YanG-1989 聚合", "https://raw.githubusercontent.com/YanG-1989/m3u/main/Gather.m3u"),
+    ("akiralereal 自托管", "https://raw.githubusercontent.com/akiralereal/iptv/main/IPTV.m3u"),
+    # iptv-org 兜底（GitHub Pages，国内直连可达，不分时段）
+    ("iptv-org 中文", "https://iptv-org.github.io/iptv/languages/zho.m3u"),
 ]
+
+# raw 源在国内拉不动，走镜像兜底；Actions 在海外直连即可（第一顺位就是直连）
+LIVE_MIRRORS = ["https://ghproxy.net/", "https://gh-proxy.com/"]
 
 LIVE_EPG = os.environ.get("LIVE_EPG", "http://epg.51zmt.top:8000/e.xml")
 LIVE_OUT = os.environ.get("LIVE_OUT_FILE", "live.m3u")
@@ -116,12 +124,45 @@ GROUP_ZH = {
 NAME_NOISE = re.compile(
     r"\s*[\(\[]\s*(?:\d{3,4}[piPI]|HD|SD|FHD|UHD|4K|8K|Not 24/7|Geo-blocked)\s*[\)\]]")
 
+# ── 频道精简 ───────────────────────────────────────────────
+# iptv-org 是全球社区收集的，杂台极多（宗教/购物/境外小台）。
+# 实测国内能播的也就 2/3，与其让用户在大杂烩里翻，不如只留真会看的。
+# 保留白名单：命中即保留（CCTV / 卫视 / 主要地方台 / 港台主力 / 央视系）
+LIVE_KEEP = re.compile(
+    r"CCTV|央视|卫视|TVB|Jade|明珠|凤凰|Phoenix|TVBS|中天|东森|三立|民视|华视|台视|"
+    r"湖南|浙江|江苏|东方|北京|上海|广东|深圳|山东|安徽|河南|湖北|四川|重庆|天津|"
+    r"辽宁|黑龙江|吉林|河北|山西|陕西|甘肃|宁夏|青海|新疆|西藏|云南|贵州|广西|海南|"
+    r"福建|江西|内蒙古|CGTN|纪录|电影|戏曲|少儿|卡酷|金鹰|CHC|SiTV|Chengdu|Shenzhen|"
+    r"NewTV|BesTV|Hunan|Zhejiang|Jiangsu|Dragon|CGTN|Phoenix",
+    re.I)
+
+# 直接丢弃的分组
+LIVE_DROP_GROUPS = {"宗教", "购物", "Religious", "Shop", "Adult"}
+
+# 是否启用精简（LIVE_SLIM=0 可关掉，拉全量）
+LIVE_SLIM = os.environ.get("LIVE_SLIM", "1") == "1"
+
 
 def fetch(url, timeout=TIMEOUT, limit=600_000):
     req = urllib.request.Request(url, headers={
         "User-Agent": UA, "Accept": "application/json, text/plain, */*"})
     with urllib.request.urlopen(req, timeout=timeout, context=CTX) as r:
         return r.read(limit).decode("utf-8", "ignore")
+
+
+def fetch_live(url, limit=8_000_000):
+    """拉直播源：先直连（Actions 在海外，raw 直连可达），
+    失败则依次走镜像（本地/国内环境用得上）。"""
+    last = None
+    for prefix in [""] + LIVE_MIRRORS:
+        try:
+            body = fetch(prefix + url, timeout=60, limit=limit)
+            if body.lstrip().startswith("#EXTM3U"):
+                return body
+            last = ValueError("返回内容不是 M3U")
+        except Exception as e:
+            last = e
+    raise last if last else RuntimeError("拉取失败")
 
 
 def looks_adult(*parts):
@@ -214,13 +255,21 @@ def build_live():
     seen, chans = set(), []
     for label, url in LIVE_SOURCES:
         try:
-            txt = fetch(url, limit=2_000_000)
+            txt = fetch_live(url)
             parsed = parse_m3u(txt)
             added = dropped = 0
             for name, u, attrs in parsed:
                 if any(mk in name for mk in LIVE_DROP_MARKS):
                     dropped += 1
                     continue
+                if LIVE_SLIM:
+                    grp_raw = (attrs.get("group-title") or "").split(";")[0].strip()
+                    if grp_raw in LIVE_DROP_GROUPS:
+                        dropped += 1
+                        continue
+                    if not LIVE_KEEP.search(name):
+                        dropped += 1
+                        continue
                 if u in seen:
                     continue
                 seen.add(u)
