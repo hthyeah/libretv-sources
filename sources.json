@@ -1,5 +1,5 @@
 {
-  "name": "LibreTV 自动源列表（2026-10-19 00:35 UTC 实测）",
+  "name": "LibreTV 自动源列表（2026-10-19 00:41 UTC 实测）",
   "version": 3,
   "sources": [
     {
@@ -35,11 +35,6 @@
     {
       "name": "爱坤",
       "url": "https://ikunzyapi.com/api.php/provide/vod/",
-      "isAdult": false
-    },
-    {
-      "name": "爱奇艺",
-      "url": "https://iqiyizyapi.com/api.php/provide/vod",
       "isAdult": false
     },
     {
@@ -86,7 +81,7 @@
   "liveSources": [
     {
       "name": "IPTV 直播（自动镜像·点开即看）",
-      "url": "https://gitee.com/hthyeah/libretv-sources/raw/main/live.m3u",
+      "url": "https://ghproxy.net/https://raw.githubusercontent.com/hthyeah/libretv-sources/main/live.m3u",
       "epg": "http://epg.51zmt.top:8000/e.xml"
     }
   ]
