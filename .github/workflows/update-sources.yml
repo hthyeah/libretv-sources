@@ -25,8 +25,9 @@ env:
   GITEE_USER: "hthyeah"                  # 改成你的 Gitee 用户名
   GITEE_REPO: "libretv-sources"          # 改成你的 Gitee 公开仓库名
   # ─────────────────────────────────────────────────────────
-  # 直播源镜像地址：构建时写进订阅的 liveSources，NAS 从 Gitee 拉（国内快）
-  LIVE_MIRROR_URL: "https://gitee.com/hthyeah/libretv-sources/raw/main/live.m3u"
+  # 直播源镜像地址：构建时写进订阅的 liveSources
+  # ⚠️ Gitee 在主人网络下 TLS 被阻断（实测 Connection reset），改用 ghproxy 代理 GitHub raw
+  LIVE_MIRROR_URL: "https://ghproxy.net/https://raw.githubusercontent.com/hthyeah/libretv-sources/main/live.m3u"
   # 节目单（EPG）：51zmt，实测 100 频道 / 3800+ 条节目
   LIVE_EPG: "http://epg.51zmt.top:8000/e.xml"
   # 然后在 Settings → Secrets and variables → Actions 里添加
