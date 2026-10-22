@@ -1,5 +1,5 @@
 {
-  "name": "LibreTV 自动源列表（2026-10-21 21:27 UTC 实测）",
+  "name": "LibreTV 自动源列表（2026-10-22 21:22 UTC 实测）",
   "version": 3,
   "sources": [
     {
@@ -35,11 +35,6 @@
     {
       "name": "爱坤",
       "url": "https://ikunzyapi.com/api.php/provide/vod/",
-      "isAdult": false
-    },
-    {
-      "name": "爱奇艺",
-      "url": "https://iqiyizyapi.com/api.php/provide/vod",
       "isAdult": false
     },
     {
