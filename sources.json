@@ -95,7 +95,7 @@
   ],
   "liveSources": [
     {
-      "name": "IPTV 直播（自动镜像·点开即看）",
+      "name": "IPTV 直播（精炼版·278 个实测可播）",
       "url": "https://ghproxy.net/https://raw.githubusercontent.com/hthyeah/libretv-sources/main/live.slim.m3u",
       "epg": "http://epg.51zmt.top:8000/e.xml"
     }
