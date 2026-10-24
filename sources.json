@@ -1,15 +1,10 @@
 {
-  "name": "LibreTV 自动源列表（2026-10-24 00:46 UTC 实测）",
+  "name": "LibreTV 自动源列表（2026-10-24 20:30 UTC 实测）",
   "version": 3,
   "sources": [
     {
       "name": "360",
       "url": "https://360zy.com/api.php/provide/vod/",
-      "isAdult": false
-    },
-    {
-      "name": "光速",
-      "url": "https://api.guangsuapi.com/api.php/provide/vod/",
       "isAdult": false
     },
     {
@@ -95,7 +90,7 @@
   ],
   "liveSources": [
     {
-      "name": "IPTV 直播（精炼版·278 个实测可播）",
+      "name": "IPTV 直播（自动镜像·点开即看）",
       "url": "https://ghproxy.net/https://raw.githubusercontent.com/hthyeah/libretv-sources/main/live.slim.m3u",
       "epg": "http://epg.51zmt.top:8000/e.xml"
     }
