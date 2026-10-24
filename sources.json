@@ -1,5 +1,5 @@
 {
-  "name": "LibreTV 自动源列表（2026-10-23 21:13 UTC 实测）",
+  "name": "LibreTV 自动源列表（2026-10-24 00:46 UTC 实测）",
   "version": 3,
   "sources": [
     {
@@ -96,7 +96,7 @@
   "liveSources": [
     {
       "name": "IPTV 直播（自动镜像·点开即看）",
-      "url": "https://ghproxy.net/https://raw.githubusercontent.com/hthyeah/libretv-sources/main/live.m3u",
+      "url": "https://ghproxy.net/https://raw.githubusercontent.com/hthyeah/libretv-sources/main/live.slim.m3u",
       "epg": "http://epg.51zmt.top:8000/e.xml"
     }
   ]
