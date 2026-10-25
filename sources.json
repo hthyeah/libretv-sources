@@ -1,10 +1,15 @@
 {
-  "name": "LibreTV 自动源列表（2026-10-24 20:30 UTC 实测）",
+  "name": "LibreTV 自动源列表（2026-10-25 20:38 UTC 实测）",
   "version": 3,
   "sources": [
     {
       "name": "360",
       "url": "https://360zy.com/api.php/provide/vod/",
+      "isAdult": false
+    },
+    {
+      "name": "光速",
+      "url": "https://api.guangsuapi.com/api.php/provide/vod/",
       "isAdult": false
     },
     {
