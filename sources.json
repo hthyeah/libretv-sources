@@ -1,5 +1,5 @@
 {
-  "name": "LibreTV 自动源列表（2026-11-07 21:38 UTC 实测）",
+  "name": "LibreTV 自动源列表（2026-11-08 21:51 UTC 实测）",
   "version": 3,
   "sources": [
     {
@@ -101,6 +101,21 @@
       "name": "魔都",
       "url": "https://www.mdzyapi.com/api.php/provide/vod/",
       "isAdult": false
+    },
+    {
+      "name": "JKUN",
+      "url": "https://jkunzyapi.com/api.php/provide/vod",
+      "isAdult": true
+    },
+    {
+      "name": "杏吧",
+      "url": "https://json.xingba222.com/api.php/provide/vod",
+      "isAdult": true
+    },
+    {
+      "name": "鲨鱼",
+      "url": "https://shayuapi.com/api.php/provide/vod/",
+      "isAdult": true
     }
   ],
   "liveSources": [
