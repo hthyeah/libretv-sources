@@ -1,5 +1,5 @@
 {
-  "name": "LibreTV 自动源列表（2026-11-08 21:51 UTC 实测）",
+  "name": "LibreTV 自动源列表（2026-11-10 01:21 UTC 实测）",
   "version": 3,
   "sources": [
     {
@@ -103,13 +103,13 @@
       "isAdult": false
     },
     {
-      "name": "JKUN",
-      "url": "https://jkunzyapi.com/api.php/provide/vod",
+      "name": "杏吧",
+      "url": "https://json.xingba222.com/api.php/provide/vod",
       "isAdult": true
     },
     {
-      "name": "杏吧",
-      "url": "https://json.xingba222.com/api.php/provide/vod",
+      "name": "辣椒",
+      "url": "https://apilj.com/api.php/provide/vod/",
       "isAdult": true
     },
     {
