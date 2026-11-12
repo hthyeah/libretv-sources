@@ -1,5 +1,5 @@
 {
-  "name": "LibreTV 自动源列表（2026-11-12 00:18 UTC 实测）",
+  "name": "LibreTV 自动源列表（2026-11-12 23:23 UTC 实测）",
   "version": 3,
   "sources": [
     {
@@ -48,6 +48,11 @@
       "isAdult": false
     },
     {
+      "name": "爱奇艺",
+      "url": "https://iqiyizyapi.com/api.php/provide/vod",
+      "isAdult": false
+    },
+    {
       "name": "猫眼",
       "url": "https://api.maoyanapi.top/api.php/provide/vod",
       "isAdult": false
@@ -90,6 +95,11 @@
     {
       "name": "非凡",
       "url": "https://ffzy5.tv/api.php/provide/vod/",
+      "isAdult": false
+    },
+    {
+      "name": "魔都",
+      "url": "https://www.mdzyapi.com/api.php/provide/vod/",
       "isAdult": false
     },
     {
