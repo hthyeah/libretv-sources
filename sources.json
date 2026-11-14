@@ -1,5 +1,5 @@
 {
-  "name": "LibreTV 自动源列表（2026-11-13 23:24 UTC 实测）",
+  "name": "LibreTV 自动源列表（2026-11-14 22:09 UTC 实测）",
   "version": 3,
   "sources": [
     {
@@ -25,6 +25,11 @@
     {
       "name": "暴风",
       "url": "https://bfzyapi.com/api.php/provide/vod/",
+      "isAdult": false
+    },
+    {
+      "name": "最大",
+      "url": "http://zuidazy.me/api.php/provide/vod/",
       "isAdult": false
     },
     {
