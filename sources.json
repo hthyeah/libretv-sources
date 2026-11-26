@@ -1,5 +1,5 @@
 {
-  "name": "LibreTV 自动源列表（2026-11-25 02:04 UTC 实测）",
+  "name": "LibreTV 自动源列表（2026-11-26 01:41 UTC 实测）",
   "version": 3,
   "sources": [
     {
@@ -60,6 +60,11 @@
     {
       "name": "红牛",
       "url": "http://hongniuzy2.com/api.php/provide/vod/",
+      "isAdult": false
+    },
+    {
+      "name": "艾旦",
+      "url": "https://lovedan.net/api.php/provide/vod",
       "isAdult": false
     },
     {
